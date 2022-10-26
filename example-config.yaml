@@ -1,0 +1,16 @@
+---
+immuta:
+  url: 'https://immuta.hostname.gov'
+  apikey: 'immutaapikey'
+  tls: # Optional
+    ca: '/path/to/immuta-ca.crt'
+
+provider:
+  id: 'collibra' # Options: 'collibra'
+  url: 'https://collibra.hostname.gov'
+  asset_types: # At least one required
+    - '00000000-0000-0000-0000-000000031007' # Table
+  username: 'username'
+  password: 'password'
+  tls: # Optional
+    ca: '/path/to/collibra-ca.crt'
