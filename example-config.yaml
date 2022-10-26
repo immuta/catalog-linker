@@ -2,15 +2,19 @@
 immuta:
   url: 'https://immuta.hostname.gov'
   apikey: 'immutaapikey'
+  limit: 100 # Rate limit Immuta data source processing
+  throttle: 1 # Seconds between batch processing
   tls: # Optional
     ca: '/path/to/immuta-ca.crt'
 
 provider:
   id: 'collibra' # Options: 'collibra'
   url: 'https://collibra.hostname.gov'
-  asset_types: # At least one required
-    - '00000000-0000-0000-0000-000000031007' # Table
   username: 'username'
   password: 'password'
+  limit: 0 # If expecting large amount of multiples, rate limit should be set
+  throttle: 0 # Seconds between batch processing
+  asset_types: # At least one required
+    - '00000000-0000-0000-0000-000000031007' # Table
   tls: # Optional
     ca: '/path/to/collibra-ca.crt'

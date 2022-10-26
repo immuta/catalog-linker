@@ -8,6 +8,9 @@ from time import strftime
 import urllib3
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
+import logging
+logging.basicConfig(level=logging.INFO)
+
 from lib.immuta import ImmutaConnection
 from lib.providers.factory import ProviderFactory
 
@@ -24,11 +27,15 @@ def handle_multiples(multiples):
     (dict) multiples - dictionary of immuta data sources and provider resources
     '''
     timestamp = strftime('%Y%m%d-%H%M%S')
-    filename = f'results-{timestamp}.txt'
+    filename = f'results/results-{timestamp}.txt'
 
-    with open(filename, 'w') as f:
-        f.write(json.dumps({'multiples': multiples}))
-        print(f'Multiple resources were found for one or more data sources, please see {filename}')
+    try:
+        with open(filename, 'w') as f:
+            f.write(json.dumps({'multiples': multiples}))
+            print(f'Multiple resources were found for one or more data sources, please see {filename}')
+    except OSError as e:
+        print(f'Unable to open results file at {e.filename}: {e.strerror}')
+        exit()
 
 def link(immuta, provider):
     '''
@@ -40,22 +47,21 @@ def link(immuta, provider):
     (ImmutaConnection) immuta   - object used to interface with Immuta
     (Provider)         provider - object used to interface with the provider
     '''
-    datasources = immuta.search()
-
     multiples = []
-    for datasource in datasources:
-        # search provider for data source names to find matching resource
-        resources = provider.search(datasource['name'])
+    for page in immuta.search(): # search is a generator
+        for datasource in page:
+            # attempt to find a matching resource in the provider
+            resources = provider.search('account')#datasource['name'])
 
-        # when multiple resources are found, save info to write to file later
-        if len(resources) > 1:
-            multiples.append({'datasource': datasource, 'resources': resources})
-            continue
+            # when multiple resources are found, save info to write to file later
+            if len(resources) > 1:
+                multiples.append({'datasource': datasource, 'resources': resources})
+                continue
 
-        # attempt to link the resource to the data source when found
-        if len(resources) > 0:
-            resource_id = py_.get(resources, '[0].id')
-            immuta.link_catalog(provider.id, datasource['id'], resource_id)
+            # attempt to link the resource to the data source when found
+            if len(resources) > 0:
+                resource_id = py_.get(resources, '[0].id')
+                immuta.link_catalog(provider.id, datasource, resources[0])
 
     # write info to file where multiple resources were found for a data source
     if len(multiples) > 0: handle_multiples(multiples)

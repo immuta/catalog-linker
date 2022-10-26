@@ -1,0 +1,1 @@
+{"multiples": [{"datasource": {"name": "example", "id": 1}, "resources": [{"id": "32198f2b-6217-4ea5-afa2-07275585e134", "name": "example"}, {"id": "7837e786-1be6-44e2-a250-a6546a10eea8", "name": "example"}]}]}

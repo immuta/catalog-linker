@@ -11,6 +11,9 @@ from lib.providers.provider import Provider
 import urllib3
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
+import logging
+logger = logging.getLogger('collibra')
+
 
 class CollibraProvider(Provider):
     def __init__(self, config):
@@ -48,6 +51,10 @@ class CollibraProvider(Provider):
         payload={'username': self._username, 'password': self._password}
         response = self._session.post(url, json=payload, verify=False)
 
+        # check response code
+        rescode = response.status_code
+        assert(rescode >= 200 and rescode < 300), f'Unable to authenticate with Collibra'
+
     def search(self, asset_name):
         '''
         Search the Collibra catalog for the provided asset name, only the
@@ -65,7 +72,7 @@ class CollibraProvider(Provider):
             'nameMatchMode': 'EXACT',
         }
 
-        # if limit is set, set the limit and offset
+        # if batch processing, set the limit and offset
         batch_process = self._limit > 0
         if batch_process:
             params['limit'] = self._limit,

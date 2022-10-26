@@ -1,5 +1,4 @@
 import json
-import logging
 import pydash as py_
 import requests
 
@@ -9,7 +8,8 @@ from time import sleep
 import urllib3
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-logging.basicConfig(level=logging.INFO)
+import logging
+logger = logging.getLogger('immuta')
 
 
 class ImmutaConnection():
@@ -41,6 +41,12 @@ class ImmutaConnection():
         url = f'{self._baseurl}/bim/apikey/authenticate'
         payload = {'apikey': self._apikey}
         response = self._session.post(url, json=payload, verify=False)
+
+        # check response code
+        rescode = response.status_code
+        assert(rescode >= 200 and rescode < 300), f'Unable to authenticate with Immuta'
+
+        # set token in session headers
         token = py_.get(response.json(), 'token')
         self._session.headers.update({ 'Authorization': token })
 
@@ -52,33 +58,28 @@ class ImmutaConnection():
         (list) return - returns a list of data source names and their ids
         '''
         url = f'{self._baseurl}/dataSource'
-        params = {}
-
-        # if limit is set, set the size and offset
-        batch_process = self._limit > 0
-        if batch_process:
-            params['size'] = self._limit
-            params['offset'] = 0
+        params = {
+            'size': self._limit,
+            'offset': 0
+        }
 
         # get the first batch of data sources and the total count
         first_response = self._session.get(url, params=params).json()
         total_results = first_response['count']
-        found = self.process(first_response)
+        yield self.process(first_response)
 
-        # if batch processing, update the offset after first batch
-        if batch_process: params['offset'] += self._limit
+        # update the offset after first batch
+        params['offset'] += self._limit
 
-        # process batches if limit is set and offset hasn't reached total results
-        while batch_process and params['offset'] < total_results:
+        # process batches when offset hasn't reached total results
+        while params['offset'] < total_results:
             # process next batch
             response = self._session.get(url, params=params).json()
-            found += self.process(response)
+            yield self.process(response)
 
             # update the offset, sleep if throttle time has been set
             params['offset'] += self._limit
             sleep(self._throttle)
-
-        return found
 
     def process(self, response):
         '''
@@ -92,14 +93,16 @@ class ImmutaConnection():
         processed = []
 
         # filter out results that are already linked to an external catalog
-        for datasource in response['hits']:
+        for hit in response['hits']:
+            url = f'{self._baseurl}/dataSource/{hit["id"]}'
+            datasource = self._session.get(url).json()
             catalog_metadata = py_.get(datasource, 'catalogMetadata', None)
             if not catalog_metadata:
-                processed.append({'name': datasource['name'], 'id': datasource['id']})
+                processed.append({'name': datasource['name'], 'id': datasource["id"]})
 
         return processed
 
-    def link_catalog(self, provider_id, datasource_id, resource_id):
+    def link_catalog(self, provider_id, datasource, resource):
         '''
         Link a data source with an external catalog
 
@@ -107,10 +110,23 @@ class ImmutaConnection():
         (str) datasource_id - the id of the Immuta data source being linked to
         (str) resource_id   - the id of the catalog resource being linked
         '''
-        payload = {
-            'catalogMetadata': {'id': resource_id, 'provider': provider_id}
-        }
+        datasource_name = datasource['name']
+        datasource_id = datasource['id']
+        resource_name = resource['name']
+        resource_id = resource['id']
 
         # size can be used to get a large number and then use the offset
         url = f'{self._baseurl}/dataSource/{datasource_id}'
+        payload = {
+            'catalogMetadata': {'id': resource['id'], 'provider': provider_id}
+        }
+
+        # attempt to link catalog
         response = self._session.put(url, json=payload)
+
+        # check response code
+        rescode = response.status_code
+        if rescode >= 200 and rescode < 300:
+            logger.info(f'Linked data source "{datasource_name}" (id={datasource_id}) to resource "{resource_name}" (id={resource_id})')
+        else:
+            logger.error(f'Unable to link data source "{datasource_name}" (id={datasource_id}) to resource "{resource_name}" (id={resource_id})')

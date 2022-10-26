@@ -19,11 +19,11 @@ class ProviderFactory():
 
         (Provider) return - returns a Provider object
         '''
-        provider_id = config['id']
+        provider_type = config['type']
         provider = None
 
         # match provided identifier with proper type, create provider object
-        if provider_id == ProviderEnum.COLLIBRA.value:
+        if provider_type == ProviderEnum.COLLIBRA.value:
             provider = CollibraProvider(config)
 
         return provider
