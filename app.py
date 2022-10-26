@@ -2,6 +2,8 @@ import os
 import pydash as py_
 import yaml, json
 
+from time import strftime
+
 # suppress requests warnings for no verification
 import urllib3
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -12,7 +14,6 @@ from lib.providers.factory import ProviderFactory
 
 CONFIG_FILE = 'config.yaml'
 CONFIG = None
-RESULTS_FILE = 'results.txt'
 
 
 def handle_multiples(multiples):
@@ -22,9 +23,12 @@ def handle_multiples(multiples):
 
     (dict) multiples - dictionary of immuta data sources and provider resources
     '''
-    with open(RESULTS_FILE, 'w') as f:
+    timestamp = strftime('%Y%m%d-%H%M%S')
+    filename = f'results-{timestamp}.txt'
+
+    with open(filename, 'w') as f:
         f.write(json.dumps({'multiples': multiples}))
-        print(f'Multiple resources were found for one or more data sources, please see {RESULTS_FILE}')
+        print(f'Multiple resources were found for one or more data sources, please see {filename}')
 
 def link(immuta, provider):
     '''
@@ -49,8 +53,9 @@ def link(immuta, provider):
             continue
 
         # attempt to link the resource to the data source when found
-        resource_id = py_.get(resources, '[0].id')
-        immuta.link_catalog(provider.id, datasource['id'], resource_id)
+        if len(resources) > 0:
+            resource_id = py_.get(resources, '[0].id')
+            immuta.link_catalog(provider.id, datasource['id'], resource_id)
 
     # write info to file where multiple resources were found for a data source
     if len(multiples) > 0: handle_multiples(multiples)

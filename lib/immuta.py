@@ -3,6 +3,8 @@ import logging
 import pydash as py_
 import requests
 
+from time import sleep
+
 # Disable insecure request warnings for log readability
 import urllib3
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -13,10 +15,12 @@ logging.basicConfig(level=logging.INFO)
 class ImmutaConnection():
     def __init__(self, config):
         '''
-        (dict) config        - Immuta connection config
-        (str)  config.url    - Base URL of Immuta
-        (str)  config.apikey - API Key for authentication with Immuta
-        (str)  config.tls.ca - Immuta CA certificate file path
+        (dict) config          - Immuta connection config
+        (str)  config.url      - Base URL of Immuta
+        (str)  config.apikey   - API Key for authentication with Immuta
+        (int)  config.limit    - Batch size limit, 0 is no limit
+        (int)  config.throttle - Batch processing throttle time in seconds
+        (str)  config.tls.ca   - Immuta CA certificate file path
         '''
         self._config = config
         self._baseurl = config['url']
@@ -24,6 +28,10 @@ class ImmutaConnection():
         self._session = requests.Session()
         self._session.verify = py_.get(config, 'tls.ca', False)
         self._session.headers.update({ 'Content-Type': 'application/json'})
+
+        # batch processing limit and throttle time should be 0 if negative
+        self._limit = config['limit'] if config['limit'] >= 0 else 0
+        self._throttle = config['throttle'] if config['throttle'] >= 0 else 0
 
     def authenticate(self):
         '''
@@ -44,16 +52,52 @@ class ImmutaConnection():
         (list) return - returns a list of data source names and their ids
         '''
         url = f'{self._baseurl}/dataSource'
-        params = {'size': 100}
-        datasources = self._session.get(url, params=params).json()
+        params = {}
 
-        found = []
-        for datasource in datasources['hits']:
-            catalog_metadata = py_.get(datasource, 'catalogMetadata', None)
-            if(not catalog_metadata):
-                found.append({'name': datasource['name'], 'id': datasource['id']})
+        # if limit is set, set the size and offset
+        batch_process = self._limit > 0
+        if batch_process:
+            params['size'] = self._limit
+            params['offset'] = 0
+
+        # get the first batch of data sources and the total count
+        first_response = self._session.get(url, params=params).json()
+        total_results = first_response['count']
+        found = self.process(first_response)
+
+        # if batch processing, update the offset after first batch
+        if batch_process: params['offset'] += self._limit
+
+        # process batches if limit is set and offset hasn't reached total results
+        while batch_process and params['offset'] < total_results:
+            # process next batch
+            response = self._session.get(url, params=params).json()
+            found += self.process(response)
+
+            # update the offset, sleep if throttle time has been set
+            params['offset'] += self._limit
+            sleep(self._throttle)
 
         return found
+
+    def process(self, response):
+        '''
+        Process search results by finding all results that are not currently
+        linked to an external catalog
+
+        (object) response - search response object
+
+        (list) return - returns list of processed results
+        '''
+        processed = []
+
+        # filter out results that are already linked to an external catalog
+        for datasource in response['hits']:
+            catalog_metadata = py_.get(datasource, 'catalogMetadata', None)
+            if not catalog_metadata:
+                processed.append({'name': datasource['name'], 'id': datasource['id']})
+
+        return processed
 
     def link_catalog(self, provider_id, datasource_id, resource_id):
         '''

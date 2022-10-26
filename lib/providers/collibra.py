@@ -3,6 +3,8 @@ import logging
 import pydash as py_
 import requests
 
+from time import sleep
+
 from lib.providers.provider import Provider
 
 # Disable insecure request warnings for log readability
@@ -18,6 +20,8 @@ class CollibraProvider(Provider):
         (str)  config.url         - Base URL of the provider
         (str)  config.username    - Username to authenticate with the provider
         (str)  config.password    - Password to authenticate with the provider
+        (int)  config.limit       - Batch size limit, 0 is no limit
+        (int)  config.throttle    - Batch processing throttle time in seconds
         (list) config.asset_types - List of asset type UUIDS for searches
         (str)  config.tls.ca      - Collibra CA certificate file path
         '''
@@ -31,6 +35,10 @@ class CollibraProvider(Provider):
         self._session.verify = py_.get(config, 'tls.ca', False)
         self._session.headers.update({ 'Content-Type': 'application/json'})
 
+        # batch processing limit and throttle time should be 0 if negative
+        self._limit = config['limit'] if config['limit'] >= 0 else 0
+        self._throttle = config['throttle'] if config['throttle'] >= 0 else 0
+
     def authenticate(self):
         '''
         Authenticates with Collibra, cookie is stored in the session
@@ -40,30 +48,59 @@ class CollibraProvider(Provider):
         payload={'username': self._username, 'password': self._password}
         response = self._session.post(url, json=payload, verify=False)
 
-    def search(self, asset_names):
+    def search(self, asset_name):
         '''
-        Search the Collibra catalog for the provided asset names, only the
+        Search the Collibra catalog for the provided asset name, only the
         assets matching the types provided in the configuration file will be
         found
 
-        (list) asset_names - list of asset names to search for in Collibra
+        (str) asset_name - asset name to search for in Collibra
 
         (list) return - returns a list of asset names and their ids that match
         '''
-        # if only a single asset has been passed, ensure it's wrapped in a list
-        asset_names = [asset_names] if type(asset_names) is str else asset_names
+        url = f'{self._baseurl}/rest/2.0/assets'
+        params = {
+            'typeIds': self._asset_types,
+            'name': asset_name,
+            'nameMatchMode': 'EXACT',
+        }
 
-        found = []
-        for asset_name in asset_names:
-            params = {
-                'typeIds': self._asset_types,
-                'name': asset_name,
-                'nameMatchMode': 'EXACT'
-            }
+        # if limit is set, set the limit and offset
+        batch_process = self._limit > 0
+        if batch_process:
+            params['limit'] = self._limit,
+            params['offset'] = 0
 
-            url = f'{self._baseurl}/rest/2.0/assets'
-            response = self._session.get(url, params=params)
-            results = py_.get(response.json(), 'results')
-            found += [{'id': result['id'], 'name': result['name']} for result in results]
+        # get the first batch of resources and the total count
+        first_response = self._session.get(url, params=params).json()
+        total_results = first_response['total']
+        found = self.process(first_response)
+
+        # if batch processing, update the offset after first batch
+        if batch_process: params['offset'] += self._limit
+
+        # process batches if limit is set and offset hasn't reached total results
+        while batch_process and params['offset'] < total_results:
+            # process next batch
+            response = self._session.get(url, params=params).json()
+            found += self.process(response)
+
+            # update the offset, sleep if throttle time has been set
+            params['offset'] += self._limit
+            sleep(self._throttle)
 
         return found
+
+    def process(self, response):
+        '''
+        Process search results by filtering out irrelevant data
+
+        (object) response - search response object
+
+        (list) return - returns list of processed results
+        '''
+        processed = []
+        for result in response['results']:
+            processed.append({'id': result['id'], 'name': result['name']})
+
+        return processed
