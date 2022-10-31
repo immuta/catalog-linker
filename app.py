@@ -51,7 +51,7 @@ def link(immuta, provider):
     for page in immuta.search(): # search is a generator
         for datasource in page:
             # attempt to find a matching resource in the provider
-            resources = provider.search('account')#datasource['name'])
+            resources = provider.search(datasource['name'])
 
             # when multiple resources are found, save info to write to file later
             if len(resources) > 1:
