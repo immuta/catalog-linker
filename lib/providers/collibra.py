@@ -65,38 +65,39 @@ class CollibraProvider(Provider):
 
         (list) return - returns a list of asset names and their ids that match
         '''
+
         url = f'{self._baseurl}/rest/2.0/assets'
         params = {
             'typeIds': self._asset_types,
             'name': asset_name,
             'nameMatchMode': 'EXACT',
+            'limit': self._limit,
+            'offset': 0
         }
 
-        # if batch processing, set the limit and offset
-        batch_process = self._limit > 0
-        if batch_process:
-            params['limit'] = self._limit,
-            params['offset'] = 0
-
         # get the first batch of resources and the total count
-        first_response = self._session.get(url, params=params).json()
-        total_results = first_response['total']
-        found = self.process(first_response)
+        response = self._session.get(url, params=params).json()
+        total_results = response['total']
+        processed = self.process(response)
 
-        # if batch processing, update the offset after first batch
-        if batch_process: params['offset'] += self._limit
+        # update the offset after first batch
+        params['offset'] += self._limit
 
-        # process batches if limit is set and offset hasn't reached total results
-        while batch_process and params['offset'] < total_results:
+        # process batches unless previous batch was empty
+        results = response['results']
+        while results:
             # process next batch
             response = self._session.get(url, params=params).json()
-            found += self.process(response)
+            results = response['results']
+
+            # if results is not empty, process response
+            if results: processed += self.process(response)
 
             # update the offset, sleep if throttle time has been set
             params['offset'] += self._limit
             sleep(self._throttle)
 
-        return found
+        return processed
 
     def process(self, response):
         '''
@@ -107,6 +108,8 @@ class CollibraProvider(Provider):
         (list) return - returns list of processed results
         '''
         processed = []
+
+        # filter out unnecessary result data
         for result in response['results']:
             processed.append({'id': result['id'], 'name': result['name']})
 

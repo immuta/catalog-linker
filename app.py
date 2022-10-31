@@ -32,9 +32,9 @@ def handle_multiples(multiples):
     try:
         with open(filename, 'w') as f:
             f.write(json.dumps({'multiples': multiples}))
-            print(f'Multiple resources were found for one or more data sources, please see {filename}')
+            logging.info(f'Multiple resources were found for one or more data sources, please see {filename}')
     except OSError as e:
-        print(f'Unable to open results file at {e.filename}: {e.strerror}')
+        logging.error(f'Unable to open results file at {e.filename}: {e.strerror}')
         exit()
 
 def link(immuta, provider):
@@ -78,7 +78,7 @@ def main():
             IMMUTA_CONFIG = py_.get(CONFIG, 'immuta')
             PROVIDER_CONFIG = py_.get(CONFIG, 'provider')
     except OSError as e:
-        print(f'Unable to open configuration file at {e.filename}: {e.strerror}')
+        logging.error(f'Unable to open configuration file at {e.filename}: {e.strerror}')
         exit()
 
     # authenticate with Immuta

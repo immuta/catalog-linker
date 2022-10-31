@@ -64,18 +64,22 @@ class ImmutaConnection():
         }
 
         # get the first batch of data sources and the total count
-        first_response = self._session.get(url, params=params).json()
-        total_results = first_response['count']
-        yield self.process(first_response)
+        response = self._session.get(url, params=params).json()
+        total_results = response['count']
+        yield self.process(response)
 
         # update the offset after first batch
         params['offset'] += self._limit
 
-        # process batches when offset hasn't reached total results
-        while params['offset'] < total_results:
+        # process batches unless previous batch was empty
+        hits = response['hits']
+        while hits:
             # process next batch
             response = self._session.get(url, params=params).json()
-            yield self.process(response)
+            hits = response['hits']
+
+            # if batch is not empty, yield
+            if hits: yield self.process(response)
 
             # update the offset, sleep if throttle time has been set
             params['offset'] += self._limit
@@ -96,9 +100,14 @@ class ImmutaConnection():
         for hit in response['hits']:
             url = f'{self._baseurl}/dataSource/{hit["id"]}'
             datasource = self._session.get(url).json()
+            datasource_name = datasource['name']
+            datasource_id = datasource['id']
             catalog_metadata = py_.get(datasource, 'catalogMetadata', None)
-            if not catalog_metadata:
-                processed.append({'name': datasource['name'], 'id': datasource["id"]})
+
+            if catalog_metadata:
+                logger.info(f'Data source "{datasource_name}" (id={datasource_id}) is already linked to an external catalog')
+            else:
+                processed.append({'name': datasource_name, 'id': datasource_id})
 
         return processed
 
