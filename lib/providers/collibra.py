@@ -70,7 +70,7 @@ class CollibraProvider(Provider):
         params = {
             'typeIds': self._asset_types,
             'name': asset_name,
-            'nameMatchMode': 'EXACT',
+            'nameMatchMode': 'END',
             'limit': self._limit,
             'offset': 0
         }
