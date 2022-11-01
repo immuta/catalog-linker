@@ -8,11 +8,12 @@ immuta:
     ca: '/path/to/immuta-ca.crt'
 
 provider:
-  id: 'collibra' # Options: 'collibra'
+  id: 'collibra' # The external catalog name as is set in Immuta
+  type: 'collibra' # Options: 'collibra'
   url: 'https://collibra.hostname.gov'
   username: 'username'
   password: 'password'
-  limit: 0 # If expecting large amount of multiples, rate limit should be set
+  limit: 0 # Default is no limit (0), this should not tax Collibra
   throttle: 0 # Seconds between batch processing
   asset_types: # At least one required
     - '00000000-0000-0000-0000-000000031007' # Table

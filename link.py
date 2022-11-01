@@ -35,6 +35,7 @@ def handle_multiples(multiples):
             logging.info(f'Multiple resources were found for one or more data sources, please see {filename}')
     except OSError as e:
         logging.error(f'Unable to open results file at {e.filename}: {e.strerror}')
+        print(json.dumps({'multiples': multiples}))
         exit()
 
 def link(immuta, provider):
