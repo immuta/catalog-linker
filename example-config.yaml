@@ -15,6 +15,8 @@ provider:
   password: 'password'
   limit: 0 # Default is no limit (0), this should not tax Collibra
   throttle: 0 # Seconds between batch processing
+  match_mode: 'END' # Options: [START|END|ANYWHERE|EXACT], Default: END
+  match_prefix: 'prefix>' # Include all characters, including whitespace,  up to the asset name if applicable
   asset_types: # At least one required
     - '00000000-0000-0000-0000-000000031007' # Table
   tls: # Optional

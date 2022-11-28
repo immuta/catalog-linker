@@ -34,6 +34,8 @@ class CollibraProvider(Provider):
         self._username = config['username']
         self._password = config['password']
         self._asset_types = config['asset_types']
+        self._match_prefix = py_.get(config, 'match_prefix', '')
+        self._match_mode = py_.get(config, 'match_mode', 'END')
         self._session = requests.Session()
         self._session.verify = py_.get(config, 'tls.ca', False)
         self._session.headers.update({ 'Content-Type': 'application/json'})
@@ -65,12 +67,11 @@ class CollibraProvider(Provider):
 
         (list) return - returns a list of asset names and their ids that match
         '''
-
         url = f'{self._baseurl}/rest/2.0/assets'
         params = {
             'typeIds': self._asset_types,
-            'name': asset_name,
-            'nameMatchMode': 'END',
+            'name': f'{self._match_prefix}{asset_name}',
+            'nameMatchMode': self._match_mode,
             'limit': self._limit,
             'offset': 0
         }
