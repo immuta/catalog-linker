@@ -43,7 +43,7 @@ class ImmutaConnection():
 
         # check response code
         rescode = response.status_code
-        assert (rescode >= 200 and rescode < 300), f'Unable to authenticate with Immuta'
+        assert (200 <= rescode < 300), f'Unable to authenticate with Immuta'
 
         # set token in session headers
         token = py_.get(response.json(), 'token')
@@ -135,7 +135,7 @@ class ImmutaConnection():
 
         # check response code
         rescode = response.status_code
-        if rescode >= 200 and rescode < 300:
+        if 200 <= rescode < 300:
             logger.info(
                 f'Linked data source "{datasource_name}" (id={datasource_id}) to resource "{resource_name}" (id={resource_id})')
         else:
