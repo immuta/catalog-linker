@@ -26,3 +26,4 @@ Integration and unit tests can be run with: `python -m unittest`
 * Please keep in mind that you may have unexpected results if using more than
   one asset type in the configuration. Please only use one asset type unless
   absolutely necessary.
+* For operation with [Collibra Edge](https://productresources.collibra.com/docs/collibra/latest/Content/Catalog/RegisterDataSource/Edge/co_register-data-source-via-edge.htm) you can use `match_mode: 'END'` and `match_prefix: 'schemaName>'` if schema names are unique.
