@@ -1,31 +1,29 @@
-import os
-import pydash as py_
-import yaml, json
-
+import json
+import logging
 from time import strftime
 
-# suppress requests warnings for no verification
+import pydash as py_
 import urllib3
+import yaml
+
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-import logging
 logging.basicConfig(level=logging.INFO)
 
 from lib.immuta import ImmutaConnection
 from lib.providers.factory import ProviderFactory
-
 
 CONFIG_FILE = 'config.yaml'
 CONFIG = None
 
 
 def handle_multiples(multiples):
-    '''
+    """
     Writes info of resources and the Immuta data source they potentially
-    correspond to to file for manual catalog linking.
+    correspond to file for manual catalog linking.
 
     (dict) multiples - dictionary of immuta data sources and provider resources
-    '''
+    """
     timestamp = strftime('%Y%m%d-%H%M%S')
     filename = f'results/results-{timestamp}.txt'
 
@@ -38,8 +36,9 @@ def handle_multiples(multiples):
         print(json.dumps({'multiples': multiples}))
         exit()
 
+
 def link(immuta, provider):
-    '''
+    """
     Attempt to link all unlinked Immuta data sources with their corresponding
     resources in an external catalog. If multiple resources are found for a
     single Immuta data source, these will not be linked and instead have their
@@ -47,9 +46,9 @@ def link(immuta, provider):
 
     (ImmutaConnection) immuta   - object used to interface with Immuta
     (Provider)         provider - object used to interface with the provider
-    '''
+    """
     multiples = []
-    for page in immuta.search(): # search is a generator
+    for page in immuta.search():  # search is a generator
         for datasource in page:
             # attempt to find a matching resource in the provider
             resources = provider.search(datasource['name'])
@@ -61,7 +60,6 @@ def link(immuta, provider):
 
             # attempt to link the resource to the data source when found
             if len(resources) > 0:
-                resource_id = py_.get(resources, '[0].id')
                 immuta.link_catalog(provider.id, datasource, resources[0])
 
     # write info to file where multiple resources were found for a data source
@@ -69,11 +67,11 @@ def link(immuta, provider):
 
 
 def main():
-    '''
+    """
     Connect to both Immuta and the external catalog provider and attempt to link
     Immuta data sources to corresponding resources in the provider
-    '''
-    try: # to load the configuration file
+    """
+    try:  # to load the configuration file
         with open(CONFIG_FILE, 'r') as f:
             CONFIG = yaml.full_load(f)
             IMMUTA_CONFIG = py_.get(CONFIG, 'immuta')

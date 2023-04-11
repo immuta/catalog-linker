@@ -20,6 +20,8 @@ Before running the script, please run `pip3 install -r requirements.txt`. The
 script is simple and can be run with `python3 link.py` after the requirements
 have been installed and the configurations have been set.
 
+Integration and unit tests can be run with: `python -m unittest`
+
 ### Notes
 * Please keep in mind that you may have unexpected results if using more than
   one asset type in the configuration. Please only use one asset type unless
