@@ -25,14 +25,14 @@ class CollibraProvider(Provider):
         (list) config.asset_types - List of asset type UUIDS for searches
         (str)  config.tls.ca      - Collibra CA certificate file path
         """
+        super().__init__()
         self.id = config['id']
-        self._config = config
-        self._baseurl = config['url']
-        self._username = config['username']
-        self._password = config['password']
         self._asset_types = config['asset_types']
-        self._match_prefix = py_.get(config, 'match_prefix', '')
+        self._baseurl = config['url']
+        self._password = config['password']
+        self._username = config['username']
         self._match_mode = py_.get(config, 'match_mode', 'END')
+        self._match_prefix = py_.get(config, 'match_prefix', '')
         self._session = requests.Session()
         self._session.verify = py_.get(config, 'tls.ca', False)
         self._session.headers.update({'Content-Type': 'application/json'})
@@ -50,9 +50,23 @@ class CollibraProvider(Provider):
         payload = {'username': self._username, 'password': self._password}
         response = self._session.post(url, json=payload, verify=False)
 
-        # check response code
-        rescode = response.status_code
-        assert (rescode >= 200 and rescode < 300), f'Unable to authenticate with Collibra'
+        assert (200 <= response.status_code < 300), f'Unable to authenticate with Collibra'
+
+    def process(self, response):
+        """
+        Process search results by filtering out irrelevant data
+
+        (object) response - search response object
+
+        (list) return - returns list of processed results
+        """
+        processed = []
+
+        # filter out unnecessary result data
+        for result in response['results']:
+            processed.append({'id': result['id'], 'name': result['name']})
+
+        return processed
 
     def search(self, asset_name):
         """
@@ -75,7 +89,6 @@ class CollibraProvider(Provider):
 
         # get the first batch of resources and the total count
         response = self._session.get(url, params=params).json()
-        total_results = response['total']
         processed = self.process(response)
 
         # update the offset after first batch
@@ -94,21 +107,5 @@ class CollibraProvider(Provider):
             # update the offset, sleep if throttle time has been set
             params['offset'] += self._limit
             sleep(self._throttle)
-
-        return processed
-
-    def process(self, response):
-        """
-        Process search results by filtering out irrelevant data
-
-        (object) response - search response object
-
-        (list) return - returns list of processed results
-        """
-        processed = []
-
-        # filter out unnecessary result data
-        for result in response['results']:
-            processed.append({'id': result['id'], 'name': result['name']})
 
         return processed
