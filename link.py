@@ -60,7 +60,6 @@ def link(immuta, provider):
 
             # attempt to link the resource to the data source when found
             if len(resources) > 0:
-                resource_id = py_.get(resources, '[0].id')
                 immuta.link_catalog(provider.id, datasource, resources[0])
 
     # write info to file where multiple resources were found for a data source

@@ -1,3 +1,4 @@
+import logging
 from time import sleep
 
 import pydash as py_
@@ -5,8 +6,6 @@ import requests
 import urllib3
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-
-import logging
 
 logger = logging.getLogger('immuta')
 
@@ -21,7 +20,6 @@ class ImmutaConnection():
         (int)  config.throttle - Batch processing throttle time in seconds
         (str)  config.tls.ca   - Immuta CA certificate file path
         """
-        self._config = config
         self._baseurl = config['url']
         self._apikey = config['apikey']
         self._session = requests.Session()
@@ -64,7 +62,6 @@ class ImmutaConnection():
 
         # get the first batch of data sources and the total count
         response = self._session.get(url, params=params).json()
-        total_results = response['count']
         yield self.process(response)
 
         # update the offset after first batch
@@ -132,10 +129,7 @@ class ImmutaConnection():
 
         # attempt to link catalog
         response = self._session.put(url, json=payload)
-
-        # check response code
-        rescode = response.status_code
-        if 200 <= rescode < 300:
+        if 200 <= response.status_code < 300:
             logger.info(
                 f'Linked data source "{datasource_name}" (id={datasource_id}) to resource "{resource_name}" (id={resource_id})')
         else:
