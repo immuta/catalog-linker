@@ -67,17 +67,8 @@ class CollibraProvider(Provider):
             processed.append({'id': result['id'], 'name': result['name']})
 
         return processed
-
+    
     def search(self, asset_name):
-        """
-        Search the Collibra catalog for the provided asset name, only the
-        assets matching the types provided in the configuration file will be
-        found
-
-        (str) asset_name - asset name to search for in Collibra
-
-        (list) return - returns a list of asset names and their ids that match
-        """
         url = f'{self._baseurl}/rest/2.0/assets'
         params = {
             'typeIds': self._asset_types,
@@ -86,26 +77,65 @@ class CollibraProvider(Provider):
             'limit': self._limit,
             'offset': 0
         }
+        all_results = []
+        max_iterations = 100  # Safety break condition
+        iteration = 0
 
-        # get the first batch of resources and the total count
-        response = self._session.get(url, params=params).json()
-        processed = self.process(response)
+        while iteration < max_iterations:
+            try:
+                #logger.info(f"Fetching batch with offset {params['offset']}...")
+                response = self._session.get(url, params=params, timeout=10)
+                response.raise_for_status()
+                response_json = response.json()
+            except requests.exceptions.RequestException as e:
+                logger.error(f"Error fetching data: {e}")
+                break
 
-        # update the offset after first batch
-        params['offset'] += self._limit
+            results = response_json.get('results', [])
+            if not isinstance(results, list):
+                logger.error("Unexpected response format: 'results' is not a list")
+                break
 
-        # process batches unless previous batch was empty
-        results = response['results']
-        while results:
-            # process next batch
-            response = self._session.get(url, params=params).json()
-            results = response['results']
+            if not results:
+                #logger.info("No more results to process. Exiting loop.")
+                break
 
-            # if results is not empty, process response
-            if results: processed += self.process(response)
+            for result in self.process({'results': results}):
+                asset_id = result.get('id')
+                if not asset_id:
+                    logger.warning("Skipping result without an ID")
+                    continue
 
-            # update the offset, sleep if throttle time has been set
-            params['offset'] += self._limit
+            all_results.append(result)
+
+            params['offset'] += len(results)
+            iteration += 1
+            logger.debug(f"Updated offset to {params['offset']}. Continuing to next batch.")
             sleep(self._throttle)
 
-        return processed
+        #logger.info(f"Finished processing. Total assets processed: {len(all_results)}")
+        return all_results
+    
+    #Fetches the tags associated with a specific datasource (asset) in Collibra. (str) datasource_id - The ID of the Collibra asset (datasource). (list) return - List of tags associated with the datasource.
+
+    def get_tags_for_datasource(self, asset_id):
+        
+        url = f'{self._baseurl}/rest/2.0/assets/{asset_id}/tags'
+        
+        try:
+            logger.debug(f"Fetching tags for Collibra asset ID: {asset_id}")
+            response = self._session.get(url, headers={'accept': 'application/json'}, timeout=10)
+            response.raise_for_status()
+            tags = response.json()
+            
+            if not tags:
+                logger.warning(f"No tags found for datasource ID {asset_id}")
+                return []
+
+            tag_names = [tag.get('name', 'Unnamed Tag') for tag in tags]
+            logger.info(f"Tags for Collibra Asset with ID {asset_id}: {', '.join(tag_names)}")
+            return tag_names
+
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Error fetching tags for Collibra Asset ID {asset_id}: {e}")
+            return []
