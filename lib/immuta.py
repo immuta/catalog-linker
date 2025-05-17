@@ -103,13 +103,20 @@ class ImmutaConnection():
                 logger.info(
                     f'Data source "{datasource_name}" (id={datasource_id}) is already linked to an external catalog')
             else:
-                # FIGURE OUT HOW TO GET THIS INFO. How do we get handler info from the API?
+                # Get handler metadata
+                handler_id = int(datasource['blobHandler']['url'].split('handler/')[-1])
+                blob_handler_type = datasource['blobHandlerType']
+                
+                # Get handler info
+                handler_url = f'{self._baseurl}/{blob_handler_type}/handler/{handler_id}'
+                handler = self._session.get(handler_url).json()
+                
                 processed.append({
-                    'name': datasource_name, 
+                    'name': datasource_name,
                     'id': datasource_id,
-                    'table_name': None,
-                    'database': None,
-                    'schema': None,
+                    'table_name': handler['metadata']['table'],
+                    'database': handler['metadata']['database'],
+                    'schema': handler['metadata']['schema'],
                 })
 
         return processed
