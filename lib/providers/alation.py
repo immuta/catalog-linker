@@ -51,22 +51,13 @@ class AlationProvider(Provider):
         (list) return - returns list of processed results
         """
         processed = []
-
+        
         # filter out unnecessary result data
         for result in response:
-            # Extract schema and database from schema_name if available
-            schema_name = result.get('schema_name', '')
-            database = schema_name.split('.')[0] if schema_name else None
-            schema = schema_name.split('.')[-1] if schema_name else None
-            
             processed.append({
                 'id': result['id'],
                 'name': result['name'],
-                'table_name': result['name'],
-                'database': database,
-                'schema': schema
             })
-
         return processed
 
     def search(self, datasource):
@@ -84,17 +75,12 @@ class AlationProvider(Provider):
         """
         try:
             # Build query exactly as alation.ts does
-            table_name = datasource.get('table_name') or datasource.get('name')
+            table_name = datasource.get('table_name')
             if table_name is None:
                 return []
-
-            if datasource.get('schema') and datasource.get('database'):
-                schema_name = f"{datasource['database'].lower()}.{datasource['schema'].lower()}"
-                query = f"name={table_name.lower()}&schema_name={schema_name}"
-            else:
-                query = f"name={table_name.lower()}"
-
-            url = f'{self._baseurl}/integration/v1/table/?{query}'
+            schema_name = f"{datasource['database'].lower()}.{datasource['schema'].lower()}"
+            query = f"name={table_name.lower()}&schema_name={schema_name}"
+            url = f'{self._baseurl}/catalog/table/?{query}'
             response = self._session.get(url)
             response.raise_for_status()
             
@@ -107,19 +93,3 @@ class AlationProvider(Provider):
         except Exception as e:
             logger.error(f"Failed to search Alation: {str(e)}")
             return []
-
-    def get_datasource_link(self, metadata):
-        """
-        Get the external link for a data source.
-
-        Args:
-            metadata: Dict containing:
-                - id: The Alation table ID
-
-        Returns:
-            str: URL to the table in Alation, or None if not found
-        """
-        if not metadata.get('id'):
-            return None
-
-        return f"{self._baseurl}/table/{metadata['id']}"

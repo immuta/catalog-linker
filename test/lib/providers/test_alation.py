@@ -60,9 +60,6 @@ class TestAlationProvider(TestCase):
         self.assertEqual(len(processed), 2)
         self.assertEqual(processed[0]['id'], '123')
         self.assertEqual(processed[0]['name'], 'RCV_DATA')
-        self.assertEqual(processed[0]['database'], 'DATABASE_1')
-        self.assertEqual(processed[0]['schema'], 'SCHEMA_1_A')
-        self.assertEqual(processed[0]['table_name'], 'RCV_DATA')
 
     def test_search_with_schema(self):
         """Test search with schema and database info"""
@@ -79,23 +76,7 @@ class TestAlationProvider(TestCase):
         
         self.assertEqual(self.json_mock.call_count, 1)
         self.get_mock.assert_called_with(
-            'https://alation.company.com/integration/v1/table/?name=rcv_data&schema_name=database_1.schema_1'
-        )
-        self.assertEqual(len(processed), 2)
-
-    def test_search_name_only(self):
-        """Test search with just the name"""
-        self.alationProvider._session = self.session_mock
-        
-        datasource = {
-            'name': 'RCV_DATA'
-        }
-        
-        processed = self.alationProvider.search(datasource)
-        
-        self.assertEqual(self.json_mock.call_count, 1)
-        self.get_mock.assert_called_with(
-            'https://alation.company.com/integration/v1/table/?name=rcv_data'
+            'https://alation.company.com/catalog/table/?name=rcv_data&schema_name=database_1.schema_1'
         )
         self.assertEqual(len(processed), 2)
 
@@ -105,7 +86,10 @@ class TestAlationProvider(TestCase):
         self.json_mock.side_effect = [loads(self.alation_api_response_empty)]
         
         datasource = {
-            'name': 'NONEXISTENT'
+            'name': 'NONEXISTENT',
+            'table_name': 'NONEXISTENT',
+            'database': 'DATABASE_1',
+            'schema': 'SCHEMA_1'
         }
         
         processed = self.alationProvider.search(datasource)
