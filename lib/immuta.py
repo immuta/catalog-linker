@@ -99,12 +99,18 @@ class ImmutaConnection():
             datasource_name = datasource['name']
             datasource_id = datasource['id']
             catalog_metadata = py_.get(datasource, 'catalogMetadata', None)
-
             if catalog_metadata:
                 logger.info(
                     f'Data source "{datasource_name}" (id={datasource_id}) is already linked to an external catalog')
             else:
-                processed.append({'name': datasource_name, 'id': datasource_id})
+                # FIGURE OUT HOW TO GET THIS INFO. How do we get handler info from the API?
+                processed.append({
+                    'name': datasource_name, 
+                    'id': datasource_id,
+                    'table_name': None,
+                    'database': None,
+                    'schema': None,
+                })
 
         return processed
 

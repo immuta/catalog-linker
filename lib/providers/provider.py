@@ -17,7 +17,7 @@ class Provider():
         '''
         pass
 
-    def search(self, resource_name):
+    def search(self, datasource):
         '''
         Search the provider for the given resource
         '''

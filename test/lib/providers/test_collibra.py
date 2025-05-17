@@ -101,7 +101,7 @@ class TestCollibraProvider(TestCase):
 
     def test_process_exact_match(self):
         self.collibraProvider.__setattr__('_session', self.session_mock)
-        processed = self.collibraProvider.search('table_name_1')
+        processed = self.collibraProvider.search({'name': 'table_name_1'})
         self.assertEqual(self.json_mock.call_count, 2)
         self.get_mock.assert_called_with(
             'https://immuta.collibra.com/rest/2.0/assets',

@@ -68,17 +68,20 @@ class CollibraProvider(Provider):
 
         return processed
 
-    def search(self, asset_name):
+    def search(self, datasource):
         """
         Search the Collibra catalog for the provided asset name, only the
         assets matching the types provided in the configuration file will be
         found
 
-        (str) asset_name - asset name to search for in Collibra
+        (dict) datasource - dictionary containing:
+            - name: name of asset to search for in Collibra
+            - id: id of the datasource
 
         (list) return - returns a list of asset names and their ids that match
         """
         url = f'{self._baseurl}/rest/2.0/assets'
+        asset_name = datasource['name']
         params = {
             'typeIds': self._asset_types,
             'name': f'{self._match_prefix}{asset_name}',
