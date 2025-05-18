@@ -22,17 +22,20 @@ class AlationProvider(Provider):
         (dict) config          - Alation connection config
         (str)  config.id       - ID of the provider ('alation')
         (str)  config.url      - Base URL of the provider
-        (str)  config.api_key  - API key to authenticate with the provider
+        (str)  config.apikey   - API key to authenticate with the provider
+        (int)  config.throttle - Per datasource processing throttle time in seconds
         """
         super().__init__()
         self.id = config['id']
         self._baseurl = config['url'].rstrip('/')
-        self._api_key = config['api_key']
+        self._api_key = config['apikey']
         self._session = requests.Session()
         self._session.headers.update({
             'Content-Type': 'application/json',
             'TOKEN': self._api_key
         })
+        # throttle time should be 0 if negative
+        self._throttle = config['throttle'] if config['throttle'] >= 0 else 0
 
     def authenticate(self):
         """
@@ -87,6 +90,9 @@ class AlationProvider(Provider):
             results = response.json()
             if not results:
                 return []
+
+            # Sleep for throttle time if configured, should be less than 1 second ideally
+            sleep(self._throttle)
 
             return self.process(results)
 

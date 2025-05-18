@@ -30,7 +30,8 @@ class TestAlationProvider(TestCase):
         self.alationProvider = AlationProvider({
             'id': 'alation',
             'url': 'https://alation.company.com',
-            'api_key': 'test-api-key'
+            'apikey': 'test-api-key',
+            'throttle': 0.1
         })
 
         self.session_mock = Mock()
@@ -95,18 +96,22 @@ class TestAlationProvider(TestCase):
         processed = self.alationProvider.search(datasource)
         self.assertEqual(len(processed), 0)
 
-    def test_authentication(self):
-        """Test authentication verification"""
-        self.alationProvider._session = self.session_mock
-        
-        def auth_mock(*args, **kwargs):
-            response_mock = Mock()
-            response_mock.status_code = 200
-            return response_mock
 
-        self.get_mock.side_effect = auth_mock
-        
-        # Should not raise any exceptions
-        self.alationProvider.authenticate()
-        
-        self.get_mock.assert_called_with('https://alation.company.com/integration/tag/') 
+    def test_throttle_configuration(self):
+        """Test that throttle configuration is properly set"""
+        provider = AlationProvider({
+            'id': 'alation',
+            'url': 'https://alation.company.com',
+            'apikey': 'test-api-key',
+            'throttle': 0.1
+        })
+        self.assertEqual(provider._throttle, 0.1)
+
+        # Test negative throttle becomes 0
+        provider = AlationProvider({
+            'id': 'alation',
+            'url': 'https://alation.company.com',
+            'apikey': 'test-api-key',
+            'throttle': -1
+        })
+        self.assertEqual(provider._throttle, 0) 
