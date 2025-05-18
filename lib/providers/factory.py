@@ -1,4 +1,5 @@
 from lib.providers.collibra import CollibraProvider
+from lib.providers.alation import AlationProvider
 from lib.providers.provider import ProviderEnum
 
 
@@ -25,5 +26,7 @@ class ProviderFactory():
         # match provided identifier with proper type, create provider object
         if provider_type == ProviderEnum.COLLIBRA.value:
             provider = CollibraProvider(config)
+        elif provider_type == ProviderEnum.ALATION.value:
+            provider = AlationProvider(config)
 
         return provider

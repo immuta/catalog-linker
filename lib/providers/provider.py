@@ -3,6 +3,7 @@ from enum import Enum
 
 class ProviderEnum(Enum):
     COLLIBRA = 'collibra'
+    ALATION = 'alation'
 
 class Provider():
     '''

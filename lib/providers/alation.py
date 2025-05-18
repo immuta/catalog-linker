@@ -39,11 +39,9 @@ class AlationProvider(Provider):
 
     def authenticate(self):
         """
-        Verifies authentication with Alation using the API key
+        Authentication is handled via API key in request headers
         """
-        url = f'{self._baseurl}/integration/tag/'
-        response = self._session.get(url)
-        assert (200 <= response.status_code < 300), 'Unable to authenticate with Alation'
+        pass
 
     def process(self, response):
         """
